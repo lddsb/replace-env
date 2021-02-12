@@ -36,7 +36,7 @@ func main() {
 	app.Copyright = fmt.Sprintf("© %s Roddy Happy", cpRight)
 
 	// Version
-	app.Version = "0.1.210209"
+	app.Version = fmt.Sprintf("0.1.%s", time.Now().Format("060102"))
 	app.Compiled = time.Now()
 
 	// Action
@@ -61,6 +61,7 @@ func command() []*cli.Command {
 					log.Fatalln("source file cannot be null")
 				}
 				outputFile := c.Args().Get(1)
+				exportEnv()
 				jsonFile(sourceFile, outputFile)
 				return nil
 			},
@@ -76,12 +77,25 @@ func command() []*cli.Command {
 					log.Fatalln("source file cannot be null")
 				}
 				outputFile := c.Args().Get(1)
+				exportEnv()
 				dotEnv(sourceFile, outputFile)
 				return nil
 			},
 			ArgsUsage: "replace-env e [--branch-env CI_COMMIT_BRANCH] source-file [output-file]",
 			Flags:     commonFlags(),
 		},
+	}
+}
+
+// exportEnv export the right environment variables for current branch
+func exportEnv() {
+	for _, e := range os.Environ() {
+		env := strings.SplitN(e, "=", 2)
+		if !strings.HasPrefix(env[0], strings.ToUpper(branchEnv)) {
+			continue
+		}
+
+		os.Setenv(strings.Replace(env[0], strings.ToUpper(branchEnv)+"_", "", 1), env[1])
 	}
 }
 
@@ -127,7 +141,7 @@ func jsonFile(source string, outfile string) {
 // jsonRecursive recursively traverse the JSON file
 func jsonRecursive(mp map[string]interface{}) map[string]interface{} {
 	for k, v := range mp {
-		env := os.Getenv(branchEnv + strings.ToUpper(k))
+		env := os.Getenv(strings.ToUpper(k))
 		switch x := v.(type) {
 		case map[string]interface{}:
 			mp[k] = jsonRecursive(x)
@@ -174,7 +188,7 @@ func dotEnv(sourceFile string, outputFile string) {
 		}
 
 		env := strings.SplitN(v, "=", 2)
-		newStringSlice = append(newStringSlice, fmt.Sprintf("%s=%v", env[0], os.Getenv(branchEnv+strings.ToUpper(env[0]))))
+		newStringSlice = append(newStringSlice, fmt.Sprintf("%s=%v", env[0], os.Getenv(strings.ToUpper(env[0]))))
 	}
 
 	if outputFile == "" {
