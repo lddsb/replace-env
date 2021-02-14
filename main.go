@@ -149,13 +149,14 @@ func command() []*cli.Command {
 
 // exportEnv export the right environment variables for current branch
 func exportEnv() {
+	branchName := strings.ToUpper(os.Getenv(branchEnv))
 	for _, e := range os.Environ() {
 		env := strings.SplitN(e, "=", 2)
-		if !strings.HasPrefix(env[0], strings.ToUpper(branchEnv)) {
+		if !strings.HasPrefix(env[0], branchName) {
 			continue
 		}
 
-		os.Setenv(strings.Replace(env[0], strings.ToUpper(branchEnv)+"_", "", 1), env[1])
+		os.Setenv(strings.Replace(env[0], branchName+"_", "", 1), env[1])
 	}
 }
 
