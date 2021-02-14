@@ -109,6 +109,7 @@ func main() {
 }
 
 var branchEnv string
+var exportFile string
 
 func command() []*cli.Command {
 	return []*cli.Command{
@@ -150,13 +151,29 @@ func command() []*cli.Command {
 // exportEnv export the right environment variables for current branch
 func exportEnv() {
 	branchName := strings.ToUpper(os.Getenv(branchEnv))
+	f, err := os.OpenFile(exportFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		panic(err)
+	}
+
+	// empty the file
+	ioutil.WriteFile(exportFile, []byte{}, 0644)
+
+	defer f.Close()
+
 	for _, e := range os.Environ() {
 		env := strings.SplitN(e, "=", 2)
-		if !strings.HasPrefix(env[0], branchName) {
+		if !strings.HasPrefix(env[0], branchName) || env[1] == "" {
 			continue
 		}
 
-		os.Setenv(strings.Replace(env[0], branchName+"_", "", 1), env[1])
+		newEnvK := strings.Replace(env[0], branchName+"_", "", 1)
+		os.Setenv(newEnvK, env[1])
+		realEnv := "export " + strings.Join([]string{newEnvK, env[1]}, "=") + "\n"
+
+		if _, err = f.WriteString(realEnv); err != nil {
+			panic(err)
+		}
 	}
 }
 
@@ -168,6 +185,12 @@ func commonFlags() []cli.Flag {
 			Usage:       "change branch environment",
 			Value:       "CI_COMMIT_BRANCH",
 			Destination: &branchEnv,
+		},
+		&cli.StringFlag{
+			Name:        "export-file",
+			Usage:       "export to the file",
+			Value:       "replace.env",
+			Destination: &exportFile,
 		},
 	}
 }
