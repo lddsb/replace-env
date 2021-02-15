@@ -226,9 +226,6 @@ func jsonFile(source string, outfile string) {
 func jsonRecursive(mp map[string]interface{}) map[string]interface{} {
 	for k, v := range mp {
 		env := os.Getenv(strings.ToUpper(underscoreName(k)))
-		if env == "" {
-			continue
-		}
 
 		switch x := v.(type) {
 		case map[string]interface{}:
@@ -236,11 +233,15 @@ func jsonRecursive(mp map[string]interface{}) map[string]interface{} {
 		case float64:
 			envFloat, err := strconv.ParseFloat(env, 64)
 			if err != nil {
-				log.Fatalln(err)
+				continue
 			}
 
 			mp[k] = envFloat
 		case bool:
+			if env == "" {
+				continue
+			}
+
 			if strings.ToLower(env) != "false" && strings.ToLower(env) != "true" {
 				env = "false"
 			}
@@ -251,6 +252,10 @@ func jsonRecursive(mp map[string]interface{}) map[string]interface{} {
 			}
 			mp[k] = envBool
 		default:
+			if env == "" {
+				continue
+			}
+
 			mp[k] = env
 		}
 	}
@@ -273,7 +278,13 @@ func dotEnv(sourceFile string, outputFile string) {
 		}
 
 		env := strings.SplitN(v, "=", 2)
-		newStringSlice = append(newStringSlice, fmt.Sprintf("%s=%v", env[0], os.Getenv(strings.ToUpper(env[0]))))
+		osEnv := os.Getenv(strings.ToUpper(env[0]))
+
+		if osEnv == "" && len(env) == 2 {
+			osEnv = env[1]
+		}
+
+		newStringSlice = append(newStringSlice, fmt.Sprintf("%s=%v", env[0], osEnv))
 	}
 
 	if outputFile == "" {
